@@ -6,8 +6,8 @@ First draft
 - PG Pooler connection with STD out messages.
 - FIRST DRAFT
 
-## Documentation, troubleshooting and FAQ
-The causes and solutions to common errors can be found among the [Documentation and frequently asked questions (FAQ)](https://cloudoutloud.net/#/cloud-out-loud-pgpooler)  
+## Documentation & FAQ
+The documentation & FAQ can be found at [Documentation and frequently asked questions (FAQ)](https://cloudoutloud.net/#/cloud-out-loud-pgpooler)  
 
 ## Source code
 The source can be found at [Github](https://github.com/Roche-Olivier/cloud-out-loud-pgpooler)  
