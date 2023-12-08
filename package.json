@@ -1,6 +1,6 @@
 {
   "name": "cloud-out-loud-pgpooler",
-  "version": "1.0.9",
+  "version": "1.0.12",
   "description": "Async or callback queries to postgres connection pools and exception handling with logs to STD OUT",
   "main": "index.js",
   "scripts": {

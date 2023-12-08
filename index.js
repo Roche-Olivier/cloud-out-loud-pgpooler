@@ -1,5 +1,5 @@
 const { Pool } = require('pg')
-// A variable is the pool , we use connections into the pool
+const shared_functions = require('./shared_functions')
 var my_pool
 exports.db_functions = {
 
@@ -75,7 +75,9 @@ exports.db_functions = {
                 console.log('POSTGRES::POOL::EVENT::REMOVED - ' + 'Database [' + database + '] for user [' + usr + '] on [' + host + ']' + ' - Total:[' + my_pool.totalCount + '] Idle:[' + my_pool.idleCount + '] Waiting:[' + my_pool.waitingCount + ']');
             });
         } catch (e) {
-            console.log('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed')
+            var err_message = ('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on - initialize_pool')
+            console.log(err_message)
+            console.log(e)
         }
     },
 
@@ -85,31 +87,24 @@ exports.db_functions = {
             var database_name = my_pool.options.database
             var host_name = my_pool.options.host
             // Create a pg client and connects 
-            const my_active_connection = await my_pool
+            const active_connection = await my_pool
                 .connect()
                 .then(function (result) {
                     return result;
                 })
                 .catch(function (err) {
-                    console.log("Error creating 'my_active_connection' connection on 'connection_pool_templates' ")
-                    var return_obj = {
-                        jsonResult: "Error creating 'my_active_connection' connection on 'connection_pool_templates' ",
-                        haserror: true,
-                        code: 500,
-                    }
-                    return return_obj;
+                    var error_message = "Error creating 'active_connection' connection on 'my_pool' "
+                    console.log(error_message)
+                    return shared_functions.shared._return_object(error_message, true, 500);
                 });
-            if (my_active_connection.code) {
-                if (my_active_connection.code === 500) {
-                    var return_obj = {
-                        jsonResult: my_active_connection.jsonResult,
-                        haserror: true,
-                        code: 500,
-                    }
-                    return return_obj;
+            if (active_connection.code) {
+                if (active_connection.code === 500) {
+                    var error_message = active_connection.jsonResult
+                    console.log(error_message)
+                    return shared_functions.shared._return_object(error_message, true, 500);
                 }
             }
-            const res = await my_active_connection.query(query_string)
+            const res = await active_connection.query(query_string)
                 .then(function (result) {
                     var end_time = new Date();
                     var total_seconds = (end_time.getTime() - start_time.getTime()) / 1000;
@@ -131,12 +126,7 @@ exports.db_functions = {
                     }
                     console.log("QUERY SUCCESS FOR " + querytype + ":  [" + database_name + "] on host [" + host_name + "] query [" + query_description + "] took " + total_seconds + " seconds.")
 
-                    var return_obj = {
-                        jsonResult: result,
-                        haserror: false,
-                        code: 200,
-                    }
-
+                    var return_obj = shared_functions.shared._return_object(result, false, 200);
                     if (querytype === "INSERT") {
                         if (result.rowCount) {
                             if (result.rowCount > 0) {
@@ -148,8 +138,6 @@ exports.db_functions = {
                             return_results = "None inserted."
                         }
                         return_obj.jsonResult = return_results
-                        return_obj.haserror = false
-                        return_obj.code = 200
                     } else if (querytype === "UPDATE") {
                         if (result.rowCount) {
                             if (result.rowCount > 0) {
@@ -161,8 +149,6 @@ exports.db_functions = {
                             return_results = "None updated."
                         }
                         return_obj.jsonResult = return_results
-                        return_obj.haserror = false
-                        return_obj.code = 200
                     } else if (querytype === "DELETE") {
                         if (result.rowCount) {
                             if (result.rowCount > 0) {
@@ -174,21 +160,15 @@ exports.db_functions = {
                             return_results = "None deleted."
                         }
                         return_obj.jsonResult = return_results
-                        return_obj.haserror = false
-                        return_obj.code = 200
                     } else {
                         if (result.rows.length > 0) {
                             if (result.rows.length === 1) {
                                 return_results = JSON.parse(JSON.stringify(result.rows));
                                 //return_results = JSON.parse(JSON.stringify(result.rows[0]));
                                 return_obj.jsonResult = return_results
-                                return_obj.haserror = false
-                                return_obj.code = 200
                             } else {
                                 return_results = JSON.parse(JSON.stringify(result.rows));
                                 return_obj.jsonResult = return_results
-                                return_obj.haserror = false
-                                return_obj.code = 200
                             }
                         } else {
                             return_obj.jsonResult = JSON.parse(JSON.stringify("No records found."))
@@ -219,30 +199,20 @@ exports.db_functions = {
                             break;
                     }
                     console.log("QUERY FAIL FOR " + querytype + ":  [" + database_name + "] on host [" + host_name + "] query [" + query_description + "] took " + total_seconds + " seconds " + " with: " + err_message)
-                    var return_obj = {
-                        jsonResult: JSON.stringify(err_message),
-                        haserror: true,
-                        code: 400,
-                    }
+                    var return_obj = shared_functions.shared._return_object(JSON.stringify(err_message), true, 400);
                     return return_obj;
                 });
 
 
-            my_active_connection.release()
+            active_connection.release()
             return res;
 
         } catch (e) {
-            console.log('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on async_query')
             var err_message = ('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on async_query')
-            var return_obj = {
-                jsonResult: JSON.stringify(err_message),
-                haserror: true,
-                code: 500,
-            }
+            console.log(err_message)
+            var return_obj = shared_functions.shared._return_object(JSON.stringify(err_message), true, 500);
             return return_obj;
         }
-
-
     },
 
     callback_query: function (query_string, query_description, callback) {
@@ -340,12 +310,11 @@ exports.db_functions = {
             })
 
         } catch (e) {
-            console.log('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on async_query')
-            var err_message = ('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on async_query')
+            var err_message = ('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on callback_query')
+            console.log(err_message)
             callback(err_message, true, 500);
         }
 
     },
-
 
 }
