@@ -1,6 +1,6 @@
 {
   "name": "cloud-out-loud-pgpooler",
-  "version": "1.0.12",
+  "version": "1.7.0",
   "description": "Async or callback queries to postgres connection pools and exception handling with logs to STD OUT",
   "main": "index.js",
   "scripts": {
@@ -16,7 +16,9 @@
   "author": "Roche OLivier",
   "license": "MIT",
   "dependencies": {
-    "moment": "^2.29.4",
-    "pg": "^8.11.3"
+    "moment": "^2.30.1",
+    "pg": "^8.11.3",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
   }
 }

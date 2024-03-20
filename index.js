@@ -1,28 +1,84 @@
 const { Pool } = require('pg')
+const path = require("path");
 const shared_functions = require('./shared_functions')
+const fs = require("fs");
 var my_pool
 exports.db_functions = {
 
     initialize_pool: function () {
         try {
-            my_pool = new Pool({
-                host: process.env.PG_HOST,
-                port: process.env.PG_PORT,
-                database: process.env.PG_DB,
-                user: process.env.PG_USER,
-                password: process.env.PG_PW,
-                max: process.env.PG_MAX_CONN,
-                idleTimeoutMillis: process.env.PG_POOL_IDLE_TIMEOUT,
-                connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT,
-                query_timeout: process.env.PG_QUERY_TIMEOUT,
-                statement_timeout: process.env.PG_STATEMENT_TIMEOUT,
-                idle_in_transaction_session_timeout: process.env.PG_STATEMENT_IDLE_TIMEOUT,
-                // Default behavior is the pool will keep clients open & connected to the backend 
-                // until idleTimeoutMillis expire for each client and node will maintain a ref 
-                // to the socket on the client, keeping the event loop alive until all clients are closed 
-                // after being idle or the pool is manually shutdown with `pool.end()`.
-                allowExitOnIdle: process.env.PG_ALLOW_EXIT_ON_IDLE
-            })
+            if (process.env.PG_SSL_USED) {
+                if (process.env.PG_SSL_USED === "true") {
+                    if (process.env.PG_SSL_FOLDER && process.env.PG_SSL_ROOT_CRT_NAME && process.env.PG_SSL_PG_KEY_NAME && process.env.PG_SSL_PG_CRT_NAME) {
+                        my_pool = new Pool({
+                            host: process.env.PG_HOST,
+                            port: process.env.PG_PORT,
+                            database: process.env.PG_DB,
+                            user: process.env.PG_USER,
+                            password: process.env.PG_PW,
+                            max: process.env.PG_MAX_CONN,
+                            idleTimeoutMillis: process.env.PG_POOL_IDLE_TIMEOUT,
+                            connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT,
+                            query_timeout: process.env.PG_QUERY_TIMEOUT,
+                            statement_timeout: process.env.PG_STATEMENT_TIMEOUT,
+                            idle_in_transaction_session_timeout: process.env.PG_STATEMENT_IDLE_TIMEOUT,
+                            sslmode: require,
+                            ssl: {
+                                rejectUnauthorized: true,
+                                ca: fs.readFileSync(path.join(__dirname, '..', '..', process.env.PG_SSL_FOLDER, process.env.PG_SSL_ROOT_CRT_NAME)).toString(),
+                                key: fs.readFileSync(path.join(__dirname, '..', '..', process.env.PG_SSL_FOLDER, process.env.PG_SSL_PG_KEY_NAME)).toString(),
+                                cert: fs.readFileSync(path.join(__dirname, '..', '..', process.env.PG_SSL_FOLDER, process.env.PG_SSL_PG_CRT_NAME)).toString(),
+                            },
+                            allowExitOnIdle: process.env.PG_ALLOW_EXIT_ON_IDLE
+                        })
+                    } else {
+                        my_pool = new Pool({
+                            host: process.env.PG_HOST,
+                            port: process.env.PG_PORT,
+                            database: process.env.PG_DB,
+                            user: process.env.PG_USER,
+                            password: process.env.PG_PW,
+                            max: process.env.PG_MAX_CONN,
+                            idleTimeoutMillis: process.env.PG_POOL_IDLE_TIMEOUT,
+                            connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT,
+                            query_timeout: process.env.PG_QUERY_TIMEOUT,
+                            statement_timeout: process.env.PG_STATEMENT_TIMEOUT,
+                            idle_in_transaction_session_timeout: process.env.PG_STATEMENT_IDLE_TIMEOUT,
+                            allowExitOnIdle: process.env.PG_ALLOW_EXIT_ON_IDLE
+                        })
+                    }
+                } else {
+                    my_pool = new Pool({
+                        host: process.env.PG_HOST,
+                        port: process.env.PG_PORT,
+                        database: process.env.PG_DB,
+                        user: process.env.PG_USER,
+                        password: process.env.PG_PW,
+                        max: process.env.PG_MAX_CONN,
+                        idleTimeoutMillis: process.env.PG_POOL_IDLE_TIMEOUT,
+                        connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT,
+                        query_timeout: process.env.PG_QUERY_TIMEOUT,
+                        statement_timeout: process.env.PG_STATEMENT_TIMEOUT,
+                        idle_in_transaction_session_timeout: process.env.PG_STATEMENT_IDLE_TIMEOUT,
+                        allowExitOnIdle: process.env.PG_ALLOW_EXIT_ON_IDLE
+                    })
+                }
+            } else {
+                my_pool = new Pool({
+                    host: process.env.PG_HOST,
+                    port: process.env.PG_PORT,
+                    database: process.env.PG_DB,
+                    user: process.env.PG_USER,
+                    password: process.env.PG_PW,
+                    max: process.env.PG_MAX_CONN,
+                    idleTimeoutMillis: process.env.PG_POOL_IDLE_TIMEOUT,
+                    connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT,
+                    query_timeout: process.env.PG_QUERY_TIMEOUT,
+                    statement_timeout: process.env.PG_STATEMENT_TIMEOUT,
+                    idle_in_transaction_session_timeout: process.env.PG_STATEMENT_IDLE_TIMEOUT,
+                    allowExitOnIdle: process.env.PG_ALLOW_EXIT_ON_IDLE
+                })
+            }
             my_pool.on("connect", (client) => {
                 //Whenever the pool establishes a new client connection to the PostgreSQL backend it will emit the connect event with the newly connected client
                 //This presents an opportunity for you to run setup commands on a client.
@@ -95,6 +151,7 @@ exports.db_functions = {
                 .catch(function (err) {
                     var error_message = "Error creating 'active_connection' connection on 'my_pool' "
                     console.log(error_message)
+                    console.log(err)
                     return shared_functions.shared._return_object(error_message, true, 500);
                 });
             if (active_connection.code) {
@@ -317,4 +374,55 @@ exports.db_functions = {
 
     },
 
+    callback_returning_query: function (query_string, query_description, callback) {
+        try {
+            var start_time = new Date();
+            my_pool.query(query_string, (err, result) => {
+                var database_name = my_pool.options.database
+                var host_name = my_pool.options.host
+                var return_results = "";
+                if (err) {
+                    var end_time = new Date();
+                    var total_seconds = (end_time.getTime() - start_time.getTime()) / 1000;
+                    var timeout_amount = (my_pool.options.query_timeout * 1) / 1000;
+                    if (err.message === "Query read timeout") {
+                        var timeout_msg = "QUERY FAILED : Database [" + database_name + "] on host [" + host_name + "] query [" + query_description + "] took " + total_seconds + " seconds and only " + timeout_amount + " seconds is allowed."
+                        console.log(timeout_msg)
+                        callback(timeout_msg, true, 408);
+                    } else {
+                        var err_msg = "QUERY FAILED : Database [" + database_name + "] on host [" + host_name + "] query [" + query_description + "] took " + total_seconds + " seconds, error occured: " + err.message + ""
+                        console.log(err_msg)
+                        callback(err_msg, true, 503); //Throws a 503
+                    }
+                } else {
+                    var end_time = new Date();
+                    var total_seconds = (end_time.getTime() - start_time.getTime()) / 1000;
+                    var querytypestring = query_string.trim().substring(0, 3).toUpperCase();
+                    var querytype = "";
+                    switch (querytypestring) {
+                        case "INS":
+                            querytype = "INSERT";
+                            break;
+                        case "UPD":
+                            querytype = "UPDATE";
+                            break;
+                        case "DEL":
+                            querytype = "DELETE";
+                            break;
+                        default:
+                            querytype = "SELECT";
+                            break;
+                    }
+                    console.log("QUERY SUCCESS FOR " + querytype + ":  [" + database_name + "] on host [" + host_name + "] query [" + query_description + "] took " + total_seconds + " seconds.")
+                    callback(result, false, 200);
+                }
+            })
+
+        } catch (e) {
+            var err_message = ('POSTGRES::POOL::EVENT::EXCEPTION - Try catch failed on callback_query - Error written to console.')
+            console.log(err_message)
+            callback(err_message, true, 500);
+        }
+
+    },
 }
